@@ -1,4 +1,4 @@
-// i behaves like immer. can you make it support map and set?
+// i behaves like immer.
 export function i<T>(currentState: T, producer: (draft: T) => void): T {
   // now supports objects, arrays, maps and sets
   if (
@@ -26,7 +26,7 @@ export function i<T>(currentState: T, producer: (draft: T) => void): T {
           return function (...args: any[]) {
             const newMap = new Map(target);
             const result = (
-              newMap[key as keyof Map<any, any>] as Function
+              newMap[key as keyof Map<any, any>] as (...args: any[]) => any
             ).apply(newMap, args);
             updateValue(newState, path ? path.split(".") : [], newMap);
             return key === "get" ||
@@ -45,10 +45,9 @@ export function i<T>(currentState: T, producer: (draft: T) => void): T {
         if (target instanceof Set && typeof target[key] === "function") {
           return function (...args: any[]) {
             const newSet = new Set(target);
-            const result = (newSet[key as keyof Set<any>] as Function).apply(
-              newSet,
-              args
-            );
+            const result = (
+              newSet[key as keyof Set<any>] as (...args: any[]) => any
+            ).apply(newSet, args);
             updateValue(newState, path ? path.split(".") : [], newSet);
             return key === "has" ||
               key === "entries" ||
@@ -65,10 +64,9 @@ export function i<T>(currentState: T, producer: (draft: T) => void): T {
         if (target instanceof Date && typeof target[key] === "function") {
           return function (...args: any[]) {
             const newDate = new Date(target.getTime()); // Use getTime() for exact copy
-            const result = (newDate[key as keyof Date] as Function).apply(
-              newDate,
-              args
-            );
+            const result = (
+              newDate[key as keyof Date] as (...args: any[]) => any
+            ).apply(newDate, args);
             updateValue(newState, path ? path.split(".") : [], newDate);
             return key.startsWith("get") ? result : newDate;
           };
@@ -180,8 +178,6 @@ export function updateValue(
     : [path];
 
   let current = obj;
-  let _parent: any = null;
-  let _keyOrIndex: any = null;
 
   for (let i = 0; i < keys.length; i++) {
     const key: string | number = keys[i];
@@ -212,8 +208,6 @@ export function updateValue(
           next = { ...next };
           current.set(key, next);
         }
-        _parent = current;
-        _keyOrIndex = key;
         current = next;
       }
     } else if (current instanceof Set) {
@@ -242,8 +236,6 @@ export function updateValue(
         arr[Number(key)] = next;
         current.clear();
         arr.forEach((item) => current.add(item));
-        _parent = current;
-        _keyOrIndex = key;
         current = next;
       }
     } else if (Array.isArray(current)) {
@@ -270,8 +262,6 @@ export function updateValue(
         } else {
           current[key as number] = { ...current[key as number] };
         }
-        _parent = current;
-        _keyOrIndex = key;
         current = current[key as number];
       }
     } else if (typeof current === "object") {
@@ -294,14 +284,10 @@ export function updateValue(
         } else {
           current[key] = { ...current[key] };
         }
-        _parent = current;
-        _keyOrIndex = key;
         current = current[key];
       }
     } else {
       // Non-traversable type
-      _parent = _parent;
-      _keyOrIndex = _keyOrIndex;
       return;
     }
   }

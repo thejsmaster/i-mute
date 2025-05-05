@@ -41,7 +41,7 @@ exports.i = i;
 exports.shallowClone = shallowClone;
 exports.isValidObject = isValidObject;
 exports.updateValue = updateValue;
-// i behaves like immer. can you make it support map and set?
+// i behaves like immer.
 function i(currentState, producer) {
     // now supports objects, arrays, maps and sets
     if (!isValidObject(currentState) ||
@@ -206,8 +206,6 @@ function updateValue(obj, path, val, isDelete) {
             ? path.split(".")
             : [path];
     var current = obj;
-    var _parent = null;
-    var _keyOrIndex = null;
     for (var i_1 = 0; i_1 < keys.length; i_1++) {
         var key = keys[i_1];
         var isLast = i_1 === keys.length - 1;
@@ -242,8 +240,6 @@ function updateValue(obj, path, val, isDelete) {
                     next = __assign({}, next);
                     current.set(key, next);
                 }
-                _parent = current;
-                _keyOrIndex = key;
                 current = next;
             }
         }
@@ -279,8 +275,6 @@ function updateValue(obj, path, val, isDelete) {
                 arr[Number(key)] = next;
                 current.clear();
                 arr.forEach(function (item) { return current.add(item); });
-                _parent = current;
-                _keyOrIndex = key;
                 current = next;
             }
         }
@@ -312,8 +306,6 @@ function updateValue(obj, path, val, isDelete) {
                 else {
                     current[key] = __assign({}, current[key]);
                 }
-                _parent = current;
-                _keyOrIndex = key;
                 current = current[key];
             }
         }
@@ -343,15 +335,11 @@ function updateValue(obj, path, val, isDelete) {
                 else {
                     current[key] = __assign({}, current[key]);
                 }
-                _parent = current;
-                _keyOrIndex = key;
                 current = current[key];
             }
         }
         else {
             // Non-traversable type
-            _parent = _parent;
-            _keyOrIndex = _keyOrIndex;
             return;
         }
     }

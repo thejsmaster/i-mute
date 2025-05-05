@@ -1,10 +1,6 @@
 ## similar to Immer but smaller and faster
 
-It's hard to work with immutable states in javascript especially when you're dealing with complex nested objects.
-
-immer-lite helps you to set the immutable state as you would with a normal object saving you a lot of time and energy. It makes the code very clean and readable and maintanable.
-
-it suppports objects, arrays, maps, sets, and more.
+Updating immutable state in react can be very hard, especially when dealing with deeply nested objects. immer-lite makes it easy — you can update state just like regular JavaScript objects. This keeps your code simple, clean, and easy to maintain. It works with objects, arrays, maps, sets, and more. This is not a state management library but a utility and can be used with other state management libraries like redux, zustand, x-plus and others. Goal of this library is to help the developer to spend less time on state management.
 
 **`It'll handle immutability and destructuring for you so you don't have to`**
 
@@ -56,7 +52,7 @@ state = {
 
 ### with immer-lite : adding email
 
-**`It'll destructur internally so you don't have to`**
+**`It'll destructure the parents objects internally.`**
 
 ```ts
 state = i(state, (currentState) => {
@@ -87,7 +83,7 @@ state = {
 
 ### with immer-lite : adding social media link
 
-**`It'll destructur internally so you don't have to`**
+**`It'll destructure the parents objects internally.`**
 
 ```ts
 state = i(state, (draft) => {
@@ -98,37 +94,64 @@ state = i(state, (draft) => {
 });
 ```
 
-### without immer-lite : updating social media link
+### updating a 2D immutable array
 
 ```ts
-state = {
-  ...state,
-  details: {
-    ...state.details,
-    address: {
-      ...state.details.address,
-      contact: {
-        ...state.details.address.contact,
-        social: new Map([
-          ...state.details.address.contact.social,
-          ["linkedin", "https://www.linkedin.com/in/john"],
-        ]),
-      },
-    },
-  },
-};
+const state = [
+  [1, 2, 3],
+  [4, 5, 6],
+];
+
+// using immer-lite
+const newState = i(state, (s) => {
+  s[0][0] = 10;
+});
+
+// without using immer-lite
+const newState = state.map((row, rowIndex) => {
+  return row.map((cell, cellIndex) => {
+    if (rowIndex === 0 && cellIndex === 0) {
+      return 10;
+    }
+    return cell;
+  });
+});
 ```
 
-### with immer-lite : updating social media link
+## using with Redux
 
-**`It'll destructur internally so you don't have to`**
+```typescript
+import { i } from "immer-lite";
+function countReducer(state = initialState, action: ActionTypes) {
+  switch (action.type) {
+    case SET_STREET:
+      return i(state, (s) => {
+        s.address.street = "new street";
+      });
+    case DECR:
+      return i(state, (s) => {
+        s.count--;
+      });
+    case INCR:
+      return i(state, (s) => s.count++);
+    default:
+      return state;
+  }
+}
+```
+
+## using with [x-plus](https://npmjs.com/package/x-plus)
+
+x-plus is a state management library for react.
 
 ```ts
-state = i(state, (draft) => {
-  draft.details.address.contact.social.set(
-    "linkedin",
-    "https://www.linkedin.com/in/john"
-  );
+import { x } from "x-plus";
+import { i } from "immer-lite";
+
+const store = x({ address: { street: "old street" } });
+
+store.update((state) => {
+  state.address.street = "new street";
 });
 ```
 

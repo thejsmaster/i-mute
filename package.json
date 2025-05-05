@@ -1,6 +1,6 @@
 {
   "name": "immer-lite",
-  "version": "0.2.5",
+  "version": "0.2.8",
   "description": "a simple lite version of immer",
   "main": "index.min.js",
   "scripts": {
