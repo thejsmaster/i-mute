@@ -1,4 +1,4 @@
-import { i } from "../index";
+import { df, i, isValidObject } from "../index";
 import { describe, it, expect, test } from "@jest/globals";
 // or if you prefer imports:
 // import { i } from '../index';
@@ -104,6 +104,31 @@ describe("i works with map or set values in nested objects", () => {
       })
     );
   });
+
+  it("should handle deleting a Map entry", () => {
+    const obj = {
+      data: new Map([
+        ["a", 1],
+        ["b", 2],
+        ["c", 3],
+      ]),
+    };
+    const result = i(obj, (draft) => {
+      draft.data.delete("b");
+    });
+
+    // Verify deletion in new Map
+    expect(result.data.has("b")).toBe(false);
+    expect(result.data.get("a")).toBe(1);
+    expect(result.data.size).toBe(2);
+
+    // Verify new Map instance was created
+    expect(result.data).not.toBe(obj.data);
+
+    // Verify original remains unchanged
+    expect(obj.data.has("b")).toBe(true);
+    expect(obj.data.size).toBe(3);
+  });
 });
 
 describe("i works with set values in nested objects", () => {
@@ -124,6 +149,27 @@ describe("i works with set values in nested objects", () => {
       })
     );
   });
+
+  it("should handle deleting a Set entry", () => {
+    const obj = {
+      data: new Set(["a", "b", "c"]),
+    };
+    const result = i(obj, (draft) => {
+      draft.data.delete("b");
+    });
+
+    // Verify deletion in new Set
+    expect(result.data.has("b")).toBe(false);
+    expect(result.data.size).toBe(2);
+    expect([...result.data]).toEqual(expect.arrayContaining(["a", "c"]));
+
+    // Verify new Set instance was created
+    expect(result.data).not.toBe(obj.data);
+
+    // Verify original remains unchanged
+    expect(obj.data.has("b")).toBe(true);
+    expect(obj.data.size).toBe(3);
+  });
 });
 
 describe("i works with date manipulations", () => {
@@ -140,6 +186,7 @@ describe("i works with date manipulations", () => {
     expect(result.birthday.getFullYear()).toBe(1990);
     expect(result.birthday.getMonth()).toBe(0);
     expect(result.birthday.getDate()).toBe(1);
+    expect(obj !== result).toBe(true);
     // Verify original wasn't modified
     expect(initialDate.getFullYear()).toBe(2000);
   });
@@ -268,5 +315,107 @@ describe("i works with arrays", () => {
     expect(newobject.test[1].c !== obj.test[1].c).toBe(true);
     expect(newobject.address.dob.getFullYear()).toBe(1990);
     expect(newobject.address.dob !== obj.address.dob).toBe(true);
+  });
+});
+
+describe("i edge cases", () => {
+  describe("handles null and undefined", () => {
+    it("should throw when input is null", () => {
+      expect(() => i(null, (draft) => {})).toThrow(
+        "Only objects, arrays, maps and sets are supported"
+      );
+    });
+
+    it("should throw when input is undefined", () => {
+      expect(() => i(undefined, (draft) => {})).toThrow(
+        "Only objects, arrays, maps and sets are supported"
+      );
+    });
+  });
+
+  describe("works with frozen objects", () => {
+    it("should handle frozen objects", () => {
+      const obj = Object.freeze({ a: 1, b: 2 });
+      const result = i(obj, (draft) => {
+        //@ts-ignore
+        draft.a = 3;
+      });
+      expect(result.a).toBe(3);
+      expect(obj.a).toBe(1);
+    });
+  });
+
+  // Add the rest of the edge case tests here...
+});
+
+describe("i works with deeply frozen nested objects", () => {
+  it("should handle updates in deeply frozen objects with Maps/Sets", () => {
+    // 1. Create a large, complex object
+    const obj = {
+      id: 1,
+      metadata: new Map<any, any>([
+        ["createdAt", new Date(2020, 0, 1)],
+        ["tags", new Set(["urgent", "backend"])],
+      ]),
+      nested: {
+        config: {
+          permissions: new Map([
+            ["admin", true],
+            ["user", false],
+          ]),
+          flags: new Set([1, 2, 3]),
+        },
+        data: [
+          { id: 1, value: "A" },
+          { id: 2, value: "B" },
+        ],
+      },
+    };
+
+    // 2. Deep freeze the entire object
+    const frozenObj: any = df(obj);
+
+    // 3. Perform multiple mutations in one producer
+    const result = i(frozenObj, (draft: any) => {
+      // Update Map
+      draft.metadata.get("createdAt")?.setFullYear(2023);
+      draft.metadata.set("updatedAt", new Date());
+      draft.nested.config.permissions.set("user", true);
+
+      // Update Set
+      draft.metadata.get("tags")?.add("high-priority");
+      draft.nested.config.flags.delete(2);
+
+      // Update plain object/array
+      draft.nested.data[0].value = "Z";
+      draft.nested.newProp = "test";
+    });
+
+    // 4. Verify all changes
+    // Maps
+    expect(result.metadata.get("createdAt")?.getFullYear()).toBe(2023);
+    expect(result.metadata.has("updatedAt")).toBe(true);
+    expect(result.nested.config.permissions.get("user")).toBe(true);
+
+    // Sets
+    expect(result.metadata.get("tags")?.has("high-priority")).toBe(true);
+    expect(result.nested.config.flags.has(2)).toBe(false);
+
+    // Objects/Arrays
+    expect(result.nested.data[0].value).toBe("Z");
+    expect(result.nested.newProp).toBe("test");
+
+    // 5. Verify original is untouched
+    expect(frozenObj.metadata.has("updatedAt")).toBe(false);
+    expect(frozenObj.nested.config.permissions.get("user")).toBe(false);
+    expect(frozenObj.nested.data[0].value).toBe("A");
+    expect("newProp" in frozenObj.nested).toBe(false);
+
+    // 6. Verify immutability (new references)
+    expect(result).not.toBe(frozenObj);
+    expect(result.metadata).not.toBe(frozenObj.metadata);
+    expect(result.nested.config.permissions).not.toBe(
+      frozenObj.nested.config.permissions
+    );
   });
 });
